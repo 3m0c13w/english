@@ -252,19 +252,6 @@ textarea{min-height:4.5em;resize:vertical}
   padding:10px 16px; border-radius:14px; font-size:.92rem; box-shadow:0 6px 24px rgba(0,0,0,.25);
 }
 
-/* ---------- 출퇴근 모드 ---------- */
-.car #feed .msg:not(.latest){display:none}
-.car .actions,.car .write,.car .example,.car .persona-pick,.car .typebar{display:none!important}
-.car .quick{grid-template-columns:1fr 1fr 1.4fr}
-.car .quick button{min-height:74px;font-size:1rem;border-radius:18px;flex-direction:column;gap:4px;padding-inline:6px}
-.car .quick .ic{width:24px;height:24px}
-.car .mic{min-height:104px;font-size:1.3rem;border-radius:26px}
-.car .mic .ic{width:28px;height:28px}
-.car .kb{display:none}
-.car .mics{grid-template-columns:1fr 1fr}
-.car.gem-listen .mics{grid-template-columns:1fr}
-.car .stepper button{width:50px;height:50px}
-.car .sv output{font-size:1.2rem}
 
 /* ---------- settings ---------- */
 dialog#settings{
@@ -316,14 +303,6 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
       <div class="status" id="status" aria-live="polite">준비됐어요</div>
     </div>
   </div>
-  <button class="hbtn" id="btnCar" aria-pressed="false">
-    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5h15v-4l-1.9-4.4a2 2 0 0 0-1.8-1.1H8.2a2 2 0 0 0-1.8 1.1L4.5 12.5z"/><path d="M4.5 12.5h15"/><path d="M7.5 14.6h.01M16.5 14.6h.01"/><path d="M6.5 16.5v2.2M17.5 16.5v2.2"/></svg>
-    출퇴근
-  </button>
-  <button class="hbtn" id="btnWrap">
-    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4h11.5l-2.6 4 2.6 4H6"/></svg>
-    마무리
-  </button>
   <button class="hbtn" id="btnSettings">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
     설정
@@ -424,7 +403,7 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
       </section>
 
       <section>
-        <h3>말 속도와 목소리</h3>
+        <h3>내 말 듣기</h3>
         <label class="field"><span>내 말 알아듣기</span>
           <select id="f-listenEngine" data-key="listenEngine">
             <option value="gemini">Gemini가 직접 듣기 (한국어·영어 섞어도 OK, 추천)</option>
@@ -432,6 +411,29 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
           </select>
         </label>
         <p class="hint">Gemini 듣기는 말을 멈추면 알아서 보내고, 선생님 대답과 함께 “내가 한 말”이 글자로 보여요. 소리 10초에 약 0.2원이에요. 안 되는 기기에서는 자동으로 휴대폰 음성 인식을 써요.</p>
+        <label class="field"><span>말 멈추면 기다리는 시간</span>
+          <select id="f-pauseSec" data-key="pauseSec">
+            <option value="1.5">1.5초 (빨리 넘어가기)</option>
+            <option value="2">2초</option>
+            <option value="3">3초 (추천)</option>
+            <option value="4">4초</option>
+            <option value="5">5초</option>
+            <option value="7">7초 (천천히 생각하기)</option>
+            <option value="manual">버튼 누를 때까지 (다 말하면 직접 보내기)</option>
+          </select>
+        </label>
+        <p class="hint">말하다가 이만큼 조용하면 다 말한 걸로 알고 보내요. 생각하느라 자주 멈추면 늘려 주세요. 언제든 말하기 버튼을 누르면 바로 보내요. (Gemini가 직접 듣기에서만 적용돼요)</p>
+        <label class="field"><span>선생님 말이 끝나면 자동으로 듣기</span>
+          <select id="f-autoListen" data-key="autoListen">
+            <option value="always">켜기 (추천)</option>
+            <option value="off">끄기 (버튼을 눌러서 말하기)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="f-beep" data-key="beep"> 듣기 시작할 때 ‘띵’ 소리 내기</label>
+      </section>
+
+      <section>
+        <h3>말 속도와 목소리</h3>
         <label class="field"><span>선생님 목소리</span>
           <select id="f-voiceEngine" data-key="voiceEngine">
             <option value="gemini">Gemini 음성 (자연스러움, 같은 API 키)</option>
@@ -488,11 +490,8 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
 
       <section>
         <h3>화면</h3>
-        <label class="field"><span>글자 크기 · 보통 화면 <output id="o-scale"></output></span>
-          <input type="range" id="f-scale" data-key="scale" min="0.8" max="2.2" step="0.05">
-        </label>
-        <label class="field"><span>글자 크기 · 출퇴근 모드 <output id="o-carScale"></output></span>
-          <input type="range" id="f-carScale" data-key="carScale" min="1.2" max="2.6" step="0.05">
+        <label class="field"><span>글자 크기 <output id="o-scale"></output></span>
+          <input type="range" id="f-scale" data-key="scale" min="0.8" max="2.6" step="0.05">
         </label>
         <label class="check"><input type="checkbox" id="f-showMeaning" data-key="showMeaning"> 영어 밑에 한국어 뜻 보이기</label>
         <label class="check"><input type="checkbox" id="f-showSound" data-key="showSound"> 한글 소리 힌트 보이기 (예: 아이 워즈 쏘 타이어드)</label>
@@ -501,23 +500,10 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
           <select id="f-theme" data-key="theme">
             <option value="auto">휴대폰 설정 따라가기</option>
             <option value="light">밝게</option>
-            <option value="dark">어둡게 (밤 운전에 추천)</option>
+            <option value="dark">어둡게 (밤에 추천)</option>
           </select>
         </label>
-      </section>
-
-      <section>
-        <h3>출퇴근 모드</h3>
-        <p class="hint">글씨가 커지고, 마지막 대화만 보이고, 버튼이 커져요. 운전 중에는 화면을 보지 말고 소리로만 하세요.</p>
-        <label class="field"><span>선생님 말이 끝나면 자동으로 듣기</span>
-          <select id="f-autoListen" data-key="autoListen">
-            <option value="always">항상 (추천)</option>
-            <option value="car">출퇴근 모드에서만</option>
-            <option value="off">끄기 (버튼을 눌러서 말하기)</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" id="f-beep" data-key="beep"> 듣기 시작할 때 ‘띵’ 소리 내기</label>
-        <label class="check"><input type="checkbox" id="f-wakeLock" data-key="wakeLock"> 출퇴근 모드에서 화면 꺼짐 막기</label>
+        <label class="check"><input type="checkbox" id="f-wakeLock" data-key="wakeLock"> 앱을 켜 둔 동안 화면 꺼짐 막기</label>
       </section>
 
       <section id="profileSec">
@@ -586,8 +572,8 @@ const DEFAULTS = {
   who:'성인', ageJob:'', level:'', likes:'', minutes:30,
   tutorName:'다온', personality:'차분하고 다정함', tone:'polite', repeat:'보통',
   enRate:0.88, koRate:1.0, gap:0.4, enVoice:'', koVoice:'',
-  scale:1.1, carScale:1.7, showMeaning:true, showSound:true, soundFirst:false, theme:'auto',
-  autoListen:'always', beep:true, wakeLock:true, carMode:false, lastLang:'ko',
+  scale:1.1, showMeaning:true, showSound:true, soundFirst:false, theme:'auto',
+  autoListen:'always', beep:true, wakeLock:true, lastLang:'ko', pauseSec:'3',
   voiceEngine:'gemini', gVoice:'Sulafat', ttsModel:'gemini-3.8-flash-lite-tts',
   persona:'calm', nickname:'', listenEngine:'gemini'
 };
@@ -618,12 +604,14 @@ let S = Object.assign({}, DEFAULTS, storedS);
 // before presets existed, a personality typed by hand means "직접 입력"
 if(!('persona' in storedS) && storedS.personality && storedS.personality !== DEFAULTS.personality) S.persona = 'custom';
 if(!PERSONAS[S.persona]) S.persona = 'calm';
-// v2: listening starts by itself after the teacher speaks, everywhere (it used to be commute mode only)
-if((storedS.v || 0) < 2){
-  if(S.autoListen === 'car') S.autoListen = 'always';
-  S.v = 2;
+// v3: commute mode is gone; listening starts by itself after the teacher speaks, and one text size remains
+if((storedS.v || 0) < 3){
+  if(S.autoListen !== 'off') S.autoListen = 'always';
+  delete S.carMode; delete S.carScale;
+  S.v = 3;
   store.set('daon.settings', S);
 }
+if(!['1.5', '2', '3', '4', '5', '7', 'manual'].includes(String(S.pauseSec))) S.pauseSec = '3';
 let chat = store.get('daon.chat', []);
 if(!Array.isArray(chat)) chat = [];
 const saveS = () => store.set('daon.settings', S);
@@ -671,7 +659,9 @@ function setState(s, lang){
   state = s; listenLang = s === 'listening' ? lang : null;
   document.body.dataset.state = s;
   const st = $('#status');
-  if(s === 'listening') st.textContent = lang === 'any' ? '듣는 중 · 다 말하면 알아서 보내요' : (lang === 'ko' ? '한국어' : '영어') + ' 듣는 중 · 버튼을 또 누르면 끝';
+  if(s === 'listening') st.textContent = lang === 'any'
+    ? (S.pauseSec === 'manual' ? '듣는 중 · 다 말하면 버튼을 누르세요' : '듣는 중 · 다 말하면 알아서 보내요')
+    : (lang === 'ko' ? '한국어' : '영어') + ' 듣는 중 · 버튼을 또 누르면 끝';
   else if(s === 'thinking') st.textContent = '생각하는 중…';
   else if(s === 'speaking') st.textContent = '말하는 중… 말하기 버튼을 누르면 끊고 들어요';
   else st.textContent = S.apiKey ? '말하기 버튼을 누르고 대답하세요' : '설정에서 API 키를 넣어 주세요';
@@ -749,7 +739,7 @@ function speakSeq(items, opts = {}){
     if(k >= chunks.length){ finishAll(); return; }
     const c = chunks[k++];
     clearSpeaking();
-    if(c.el){ c.el.classList.add('speaking'); if(S.carMode) c.el.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+    if(c.el) c.el.classList.add('speaking');
     const u = new SpeechSynthesisUtterance(c.text);
     u.lang = c.lang === 'ko' ? 'ko-KR' : 'en-US';
     const v = pickVoice(c.lang); if(v) u.voice = v;
@@ -974,7 +964,7 @@ function abortListening(){
 }
 
 function maybeAutoListen(){
-  if(S.autoListen === 'off' || (S.autoListen === 'car' && !S.carMode)) return;
+  if(S.autoListen === 'off') return;
   if(!S.apiKey || document.hidden || $('#settings').open) return;
   if(useGeminiListen()){
     setTimeout(() => { if(state === 'idle' && !cap && !rec) startCapture({auto:true}); }, 350);
@@ -1055,9 +1045,15 @@ async function startCapture(opts = {}){
   my.src.connect(my.proc); my.proc.connect(my.mute); my.mute.connect(micCtx.destination);
   if(!opts.retry) beep(880);
   my.started = performance.now();
+  // how long to wait: beginners pause to think, so the pause before sending comes from the settings
+  const manual = S.pauseSec === 'manual';
+  my.pause = manual ? Infinity : (parseFloat(S.pauseSec) || 3) * 1000;
+  my.waitStart = manual ? 60000 : 15000;   // for the first word
+  my.maxLen = manual ? 120000 : 60000;     // one turn at most
+  const talking = manual ? '듣고 있어요… 다 말했으면 아래 말하기 버튼을 눌러 주세요' : '듣고 있어요… 다 말하면 알아서 보내요';
   // never hang if the phone stops delivering sound
-  my.guard = setTimeout(() => { if(cap === my && !my.speech) finishCapture(my, 'silence'); }, 9000);
-  my.hard = setTimeout(() => { if(cap === my) finishCapture(my, my.speech ? 'done' : 'silence'); }, 30000);
+  my.guard = setTimeout(() => { if(cap === my && !my.speech) finishCapture(my, 'silence'); }, my.waitStart + 2000);
+  my.hard = setTimeout(() => { if(cap === my) finishCapture(my, my.speech ? 'done' : 'silence'); }, my.maxLen + 5000);
   my.proc.onaudioprocess = e => {
     if(cap !== my) return;
     const d = new Float32Array(e.inputBuffer.getChannelData(0));
@@ -1076,13 +1072,21 @@ async function startCapture(opts = {}){
       my.voiceRun = rms > my.threshold ? my.voiceRun + 1 : 0;
       if(my.voiceRun >= 2){
         my.speech = true; my.chunks = my.pre.slice(); my.pre = []; my.lastVoice = t;
-        setLiveText('듣고 있어요… 다 말하면 알아서 보내요');
-      } else if(t > 7000) finishCapture(my, 'silence');
+        setLiveText(talking);
+      } else if(t > my.waitStart) finishCapture(my, 'silence');
       return;
     }
     my.chunks.push(d);
-    if(rms > my.threshold * 0.8) my.lastVoice = t;
-    if(t - my.lastVoice > 1300 || t > 25000) finishCapture(my, 'done');   // a 1.3 s pause ends the turn
+    if(rms > my.threshold * 0.8){
+      my.lastVoice = t;
+      if(my.left != null){ my.left = null; setLiveText(talking); }
+    }
+    const quiet = t - my.lastVoice;
+    if(quiet > my.pause || t > my.maxLen){ finishCapture(my, 'done'); return; }
+    if(!manual && quiet > 800){   // show the countdown so they know they can keep talking
+      const left = Math.ceil((my.pause - quiet) / 1000);
+      if(left !== my.left){ my.left = left; setLiveText(`잠깐 멈췄어요 · ${left}초 뒤에 보내요 (더 말해도 돼요)`); }
+    }
   };
 }
 function finishCapture(my, why){
@@ -1090,7 +1094,7 @@ function finishCapture(my, why){
   cap = null; releaseCapture(my); hideLive(); setState('idle');
   if(why === 'silence' || !my.speech || !my.chunks.length){
     const tries = my.opts.tries || 0;
-    if(my.opts.auto && tries < 2 && !document.hidden && !$('#settings').open){
+    if(my.opts.auto && tries < 1 && !document.hidden && !$('#settings').open){   // about 30 s in all before giving up
       setTimeout(() => { if(state === 'idle' && !cap) startCapture({auto:true, retry:true, tries:tries + 1}); }, 150);
       return;
     }
@@ -1178,7 +1182,7 @@ nick
 '11. 이야깃거리가 떨어질 때만 학생이 좋아하는 것을 꺼내.',
 '12. 학생 말은 음성 인식 결과라 글자가 틀릴 수 있어. 뜻을 짐작해서 이해하고, 받아쓰기 오류는 지적하지 마. [영어 음성]인데 앞뒤가 안 맞는 영어 단어들이면, 학생이 한국어로 말한 걸 영어로 잘못 받아 적은 거야. 그럴 땐 "한국어로 말할 땐 한국어 버튼을 눌러 주세요"라고 짧게 알려 줘. 반대로 [한국어 음성]인데 영어 발음을 한글로 받아 적은 것 같으면(예: "아이 워즈 타이어드") 학생이 영어로 말한 거야. 영어 문장으로 알아듣고 영어로 말한 걸 칭찬해 줘.',
 '13. [시작] 신호: 한국어로 짧게 인사하고(부르는 이름이 있으면 이름을 불러서), 오늘 하루가 어땠는지 쉬운 영어로 하나만 물어봐.',
-'14. [마무리] 신호: 오늘 같이 쓴 문장 중 쓸모 있는 것 최대 3개를 review에 담고, 수고했다고 말하고, 그중 하나를 직접 써 보라고 해.',
+'14. [마무리] 신호, 또는 학생이 끝내자고 하면("오늘은 여기까지", "그만할게요", "끝", "bye" 등): 오늘 같이 쓴 문장 중 쓸모 있는 것 최대 3개를 review에 담고, 수고했다고 말하고, 그중 하나를 직접 써 보라고 해.',
 '15. [쓰기] 신호: 학생이 쓴 문장을 부드럽게 고쳐 줘. 고친 문장은 say_this에, 바뀐 점은 한국어 한 문장으로. 맞았으면 칭찬만.',
 '16. 사람인 척하지 마. 물어보면 "영어 공부를 돕는 AI 과외 선생님"이라고 해. 주소·회사 이름·연락처·비밀번호 같은 개인정보는 묻지 마.'
   ];
@@ -1187,7 +1191,6 @@ nick
     L.push('', `[성격 지침: ${P.label}]`, ...P.rules.map(r => '- ' + r),
       '- 성격 지침이 위 수업 규칙과 겹치면 성격 지침을 따라. 단, 한 번에 짧게 말하기와 답 형식은 꼭 지켜.');
   }
-  if(S.carMode) L.push('', '[지금 상황] 학생은 출퇴근길 차 안이라 화면을 거의 못 봐. 소리만 듣고도 따라올 수 있게 영어는 더 짧게, 한국어 설명도 더 짧게 해. "화면을 보세요" 같은 말은 하지 마.');
   L.push('',
 '[음성 메시지] 학생 말에 소리 파일이 붙어 오면 소리를 직접 들어. 한국어와 영어가 섞여 있어도 그대로 이해해.',
 '- 영어 문장 속에 모르는 단어를 한국어로 넣었으면(예: "I want go to 박물관"): 그 단어의 영어를 짧게 알려 주고("박물관은 museum이에요"), 고친 전체 문장을 say_this에 넣어 따라 하게 해.',
@@ -1374,7 +1377,7 @@ async function requestTutor(){
       msg = `이 모델(${modelId()})은 소리를 직접 못 들어서 휴대폰 음성 인식으로 바꿨어요. 한국어로/영어로 버튼으로 다시 말해 주세요.`;
     }
     chat.push({role:'error', text:msg}); saveChat(); setState('idle'); renderAll();
-    if(S.carMode) sayKo('연결에 문제가 생겼어요. 잠시 뒤에 다시 말해 주세요.', {noAuto:true});
+    if(S.autoListen !== 'off') sayKo('연결에 문제가 생겼어요. 잠시 뒤에 다시 말해 주세요.', {noAuto:true});
   }finally{
     if(inflight === ctrl) inflight = null;
   }
@@ -1508,7 +1511,10 @@ function welcomeNode(){
       el('li', null, el('b', {text:'한국어로 말해도 돼요. '}), '하고 싶었던 말을 영어로 바꿔서 알려 줄게요.'),
       el('li', null, el('b', {text:'못 알아들으면 '}), '‘못 알아들었어요’를 누르거나 “뭐라고요?”라고 하세요. 한국어로 풀어서 설명해 줄게요.'),
       el('li', null, el('b', {text:'속도와 글자 크기는 '}), '위쪽 − / + 로 바로 바꿔요. 말로 “천천히”, “다시”라고 해도 돼요.'),
-      el('li', null, el('b', {text:'출퇴근 모드는 '}), '글씨와 버튼을 크게 하고 화면이 꺼지지 않게 해요. 운전 중엔 화면 말고 소리로만 하세요.')),
+      el('li', null, el('b', {text:'천천히 생각해도 돼요. '}), S.pauseSec === 'manual'
+        ? '다 말하고 말하기 버튼을 누를 때까지 기다려요.'
+        : `말하다 멈춰도 ${S.pauseSec}초는 기다려요. 더 길게 기다리게 하려면 설정에서 바꾸세요.`),
+      el('li', null, el('b', {text:'끝낼 때는 '}), '“오늘은 여기까지”라고 하면 오늘 배운 문장을 정리해 줄게요.')),
     ex,
     el('div', {class:'persona-pick'},
       el('div', {class:'lbl', text:'오늘 선생님 성격'}),
@@ -1541,16 +1547,7 @@ function renderAll(){
   scrollFeed();
 }
 function scrollFeed(){
-  requestAnimationFrame(() => {
-    if(S.carMode){
-      const lt = lastTutor();
-      const node = lt && feed.querySelector(`.msg[data-i="${lt.i}"]`);
-      const after = feed.querySelector('.msg.user.live, .msg.thinking');
-      if(after) after.scrollIntoView({block:'end'});
-      else if(node) node.scrollIntoView({block:'start'});
-      else feed.scrollTop = feed.scrollHeight;
-    } else feed.scrollTop = feed.scrollHeight;
-  });
+  requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
 }
 function showThinking(on){
   let t = feed.querySelector('.msg.thinking');
@@ -1578,16 +1575,15 @@ function setLiveText(text){ const n = feed.querySelector('.msg.user.live .lt'); 
 function updateMeter(x){ const i = feed.querySelector('.msg.user.live .meter i'); if(i) i.style.width = Math.min(100, Math.round(x * 45)) + '%'; }
 function hideLive(){ const n = feed.querySelector('.msg.user.live'); if(n) n.remove(); }
 
-/* ================= controls: speed · text size · car mode ================= */
+/* ================= controls: speed · text size ================= */
 function changeRate(d){
   S.enRate = clamp(r2(S.enRate + d), 0.5, 1.3); saveS(); syncOutputs();
   toast(`${S.voiceEngine === 'gemini' ? '말' : '영어'} 속도 ${S.enRate.toFixed(2)}배`);
 }
 function changeScale(d){
-  const k = S.carMode ? 'carScale' : 'scale';
-  S[k] = clamp(r2(S[k] + d), 0.8, 2.6); saveS(); applyScale(); syncOutputs();
+  S.scale = clamp(r2(S.scale + d), 0.8, 2.6); saveS(); applyScale(); syncOutputs();
 }
-function applyScale(){ document.documentElement.style.setProperty('--scale', S.carMode ? S.carScale : S.scale); }
+function applyScale(){ document.documentElement.style.setProperty('--scale', S.scale); }
 function applyTheme(){
   if(S.theme === 'light' || S.theme === 'dark') document.documentElement.setAttribute('data-theme', S.theme);
   else document.documentElement.removeAttribute('data-theme');
@@ -1598,24 +1594,22 @@ function syncOutputs(){
   document.body.classList.toggle('gem-listen', useGeminiListen());
   $('#rateLbl').textContent = S.voiceEngine === 'gemini' ? '말 속도' : '영어 속도';
   $('#enRateLbl').textContent = S.voiceEngine === 'gemini' ? '말 속도 (한국어·영어 같이)' : '영어 속도';
-  $('#fontOut').textContent = Math.round((S.carMode ? S.carScale : S.scale) * 100) + '%';
+  $('#fontOut').textContent = Math.round(S.scale * 100) + '%';
   $('#tutorName').textContent = `${S.tutorName || '다온'} 쌤`;
   const o = (id, v) => { const e = $('#o-' + id); if(e) e.textContent = v; };
   o('enRate', S.enRate.toFixed(2) + '×'); o('koRate', S.koRate.toFixed(2) + '×'); o('gap', S.gap.toFixed(1) + '초');
-  o('scale', Math.round(S.scale * 100) + '%'); o('carScale', Math.round(S.carScale * 100) + '%');
-  for(const k of ['enRate', 'koRate', 'gap', 'scale', 'carScale']){ const f = $('#f-' + k); if(f && document.activeElement !== f) f.value = S[k]; }
+  o('scale', Math.round(S.scale * 100) + '%');
+  for(const k of ['enRate', 'koRate', 'gap', 'scale']){ const f = $('#f-' + k); if(f && document.activeElement !== f) f.value = S[k]; }
   updateTimer();
 }
 function applyMode(){
-  document.body.classList.toggle('car', !!S.carMode);
-  $('#btnCar').setAttribute('aria-pressed', String(!!S.carMode));
   applyScale(); syncOutputs(); updateWake(); renderAll();
 }
 
 let wake = null;
 async function updateWake(){
   try{
-    const want = S.carMode && S.wakeLock && 'wakeLock' in navigator && !document.hidden;
+    const want = S.wakeLock && 'wakeLock' in navigator && !document.hidden;
     if(want && !wake){ wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
     else if(!want && wake){ await wake.release(); wake = null; }
   }catch(e){ wake = null; }
@@ -1701,7 +1695,8 @@ $$('[data-key]').forEach(f => {
     S[k] = v; saveS();
     if(k === 'theme') applyTheme();
     if(k === 'persona') choosePersona(v);
-    if(k === 'scale' || k === 'carScale') applyScale();
+    if(k === 'scale') applyScale();
+    if(k === 'wakeLock') updateWake();
     if(['voiceEngine', 'gVoice', 'ttsModel', 'apiKey'].includes(k)){ ttsOffUntil = 0; $('#voiceOut').textContent = ''; }
     if(k === 'listenEngine' || k === 'model') listenFallback = false;
     syncOutputs();
@@ -1860,15 +1855,7 @@ $('#qHuh').addEventListener('click', () => {
   if(!lastTutor()){ toast('선생님이 먼저 말을 걸면 눌러 주세요.'); return; }
   sendSignal('huh');
 });
-$('#btnWrap').addEventListener('click', () => {
-  if(!lastTutor()){ toast('수업을 시작한 뒤에 마무리할 수 있어요.'); return; }
-  sendSignal('wrap');
-});
 $('#btnSettings').addEventListener('click', () => openSettings(false));
-$('#btnCar').addEventListener('click', () => {
-  S.carMode = !S.carMode; saveS(); applyMode();
-  toast(S.carMode ? '출퇴근 모드: 큰 글씨 · 자동 듣기' : '보통 화면으로 돌아왔어요');
-});
 $('#rateDown').addEventListener('click', () => changeRate(-0.05));
 $('#rateUp').addEventListener('click', () => changeRate(+0.05));
 $('#fontDown').addEventListener('click', () => changeScale(-0.1));
