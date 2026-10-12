@@ -228,7 +228,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 .mic.ko{background:var(--accent-soft);color:var(--accent)}
 .mic.en{background:var(--accent);color:var(--accent-ink)}
+.mic.any{background:var(--accent);color:var(--accent-ink)}
 .mic.on{background:var(--rec);color:var(--rec-ink);animation:pulse-bg 1.1s ease-in-out infinite}
+.gem-listen .mic.ko,.gem-listen .mic.en,body:not(.gem-listen) .mic.any{display:none}
+.gem-listen .mics{grid-template-columns:1fr auto}
+.meter{display:block;height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--rec);transition:width .08s linear}
 .kb{width:52px;border-radius:16px;border:1px solid var(--line);background:var(--sunk);display:grid;place-items:center}
 .kb[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
 .typebar{display:flex;gap:8px}
@@ -257,6 +262,7 @@ textarea{min-height:4.5em;resize:vertical}
 .car .mic .ic{width:28px;height:28px}
 .car .kb{display:none}
 .car .mics{grid-template-columns:1fr 1fr}
+.car.gem-listen .mics{grid-template-columns:1fr}
 .car .stepper button{width:50px;height:50px}
 .car .sv output{font-size:1.2rem}
 
@@ -359,6 +365,10 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
       <span>한국어로</span>
     </button>
+    <button class="mic any" id="micAny" data-lang="any">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+      <span>말하기</span>
+    </button>
     <button class="mic en" id="micEn" data-lang="en">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
       <span>영어로</span>
@@ -415,6 +425,13 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
 
       <section>
         <h3>말 속도와 목소리</h3>
+        <label class="field"><span>내 말 알아듣기</span>
+          <select id="f-listenEngine" data-key="listenEngine">
+            <option value="gemini">Gemini가 직접 듣기 (한국어·영어 섞어도 OK, 추천)</option>
+            <option value="device">휴대폰 음성 인식 (한국어로·영어로 버튼으로 고르기)</option>
+          </select>
+        </label>
+        <p class="hint">Gemini 듣기는 말을 멈추면 알아서 보내고, 선생님 대답과 함께 “내가 한 말”이 글자로 보여요. 소리 10초에 약 0.2원이에요. 안 되는 기기에서는 자동으로 휴대폰 음성 인식을 써요.</p>
         <label class="field"><span>선생님 목소리</span>
           <select id="f-voiceEngine" data-key="voiceEngine">
             <option value="gemini">Gemini 음성 (자연스러움, 같은 API 키)</option>
@@ -572,7 +589,7 @@ const DEFAULTS = {
   scale:1.1, carScale:1.7, showMeaning:true, showSound:true, soundFirst:false, theme:'auto',
   autoListen:'always', beep:true, wakeLock:true, carMode:false, lastLang:'ko',
   voiceEngine:'gemini', gVoice:'Sulafat', ttsModel:'gemini-3.8-flash-lite-tts',
-  persona:'calm', nickname:''
+  persona:'calm', nickname:'', listenEngine:'gemini'
 };
 // teaching styles: each changes how she corrects, praises and pushes, and suggests a matching Gemini voice
 const PERSONAS = {
@@ -654,14 +671,15 @@ function setState(s, lang){
   state = s; listenLang = s === 'listening' ? lang : null;
   document.body.dataset.state = s;
   const st = $('#status');
-  if(s === 'listening') st.textContent = (lang === 'ko' ? '한국어' : '영어') + ' 듣는 중 · 버튼을 또 누르면 끝';
+  if(s === 'listening') st.textContent = lang === 'any' ? '듣는 중 · 다 말하면 알아서 보내요' : (lang === 'ko' ? '한국어' : '영어') + ' 듣는 중 · 버튼을 또 누르면 끝';
   else if(s === 'thinking') st.textContent = '생각하는 중…';
   else if(s === 'speaking') st.textContent = '말하는 중… 말하기 버튼을 누르면 끊고 들어요';
   else st.textContent = S.apiKey ? '말하기 버튼을 누르고 대답하세요' : '설정에서 API 키를 넣어 주세요';
-  for(const b of [$('#micKo'), $('#micEn')]){
+  const idle = {ko:'한국어로', en:'영어로', any:'말하기'};
+  for(const b of $$('.mic')){
     const on = s === 'listening' && b.dataset.lang === lang;
     b.classList.toggle('on', on);
-    b.querySelector('span').textContent = on ? '듣는 중…' : (b.dataset.lang === 'ko' ? '한국어로' : '영어로');
+    b.querySelector('span').textContent = on ? (lang === 'any' ? '듣는 중… 누르면 보내기' : '듣는 중…') : idle[b.dataset.lang];
   }
 }
 
@@ -948,6 +966,7 @@ function startListening(lang, opts = {}){
 }
 function stopListening(){ if(rec){ try{ rec.stop(); }catch(e){} } }
 function abortListening(){
+  if(cap) stopCapture();
   if(!rec) return;
   const r = rec; rec = null;
   try{ r.abort(); }catch(e){}
@@ -956,7 +975,12 @@ function abortListening(){
 
 function maybeAutoListen(){
   if(S.autoListen === 'off' || (S.autoListen === 'car' && !S.carMode)) return;
-  if(!SR || !S.apiKey || document.hidden || $('#settings').open) return;
+  if(!S.apiKey || document.hidden || $('#settings').open) return;
+  if(useGeminiListen()){
+    setTimeout(() => { if(state === 'idle' && !cap && !rec) startCapture({auto:true}); }, 350);
+    return;
+  }
+  if(!SR) return;
   const last = lastTutor();
   const lang = last && last.m.data.say_this ? 'en' : (S.lastLang || 'ko');
   setTimeout(() => { if(state === 'idle' && !rec) startListening(lang, {auto:true}); }, 350);
@@ -981,6 +1005,127 @@ function handleSpoken(text, lang){
   sendUser(text, lang);
 }
 
+/* ================= Gemini listening: record my voice and let Gemini hear it =================
+   Korean and English can be mixed freely ("I want go to 박물관"). The phone's speech recognition
+   only hears one language at a time, so it stays as the fallback. */
+let cap = null;                   // the recording in progress
+let micCtx = null;
+let listenFallback = false;       // this phone or model can't do it: use the phone's speech recognition for now
+const pendingAudio = new Map();   // message time → base64 WAV, kept only until the teacher answers
+const useGeminiListen = () => S.listenEngine === 'gemini' && !listenFallback && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+function releaseCapture(my){
+  clearTimeout(my.guard); clearTimeout(my.hard);
+  try{ if(my.proc) my.proc.onaudioprocess = null; }catch(e){}
+  for(const n of [my.src, my.proc, my.mute]){ try{ if(n) n.disconnect(); }catch(e){} }
+  if(my.stream) my.stream.getTracks().forEach(t => t.stop());   // the microphone is open only while listening
+}
+function stopCapture(){
+  if(!cap) return;
+  const my = cap; cap = null; releaseCapture(my);
+  hideLive(); if(state === 'listening') setState('idle');
+}
+async function startCapture(opts = {}){
+  if(!S.apiKey){ openSettings(true); toast('먼저 Gemini API 키를 넣어 주세요.'); return; }
+  if(state === 'thinking'){ toast('선생님이 생각 중이에요. 잠깐만요.'); return; }
+  stopSpeaking(); abortListening();
+  const my = {opts, chunks:[], pre:[], noise:[], speech:false, voiceRun:0, lastVoice:0, threshold:0.02, started:0};
+  cap = my;
+  setState('listening', 'any'); showLive('', 'any');
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}});
+  }catch(e){
+    if(cap !== my) return;
+    cap = null; hideLive(); setState('idle');
+    if(e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) toast('마이크가 막혀 있어요. 주소창 왼쪽 자물쇠에서 마이크를 허용해 주세요.');
+    else { listenFallback = true; syncOutputs(); toast('이 기기에서는 Gemini 듣기를 못 써서 휴대폰 음성 인식으로 바꿀게요.'); }
+    return;
+  }
+  if(cap !== my){ stream.getTracks().forEach(t => t.stop()); return; }
+  try{
+    micCtx = micCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(micCtx.state === 'suspended') await micCtx.resume();
+  }catch(e){}
+  if(cap !== my){ stream.getTracks().forEach(t => t.stop()); return; }
+  my.stream = stream; my.rate = micCtx.sampleRate;
+  my.src = micCtx.createMediaStreamSource(stream);
+  my.proc = micCtx.createScriptProcessor(4096, 1, 1);
+  my.mute = micCtx.createGain(); my.mute.gain.value = 0;   // the processor must reach the output to run; keep it silent
+  my.src.connect(my.proc); my.proc.connect(my.mute); my.mute.connect(micCtx.destination);
+  if(!opts.retry) beep(880);
+  my.started = performance.now();
+  // never hang if the phone stops delivering sound
+  my.guard = setTimeout(() => { if(cap === my && !my.speech) finishCapture(my, 'silence'); }, 9000);
+  my.hard = setTimeout(() => { if(cap === my) finishCapture(my, my.speech ? 'done' : 'silence'); }, 30000);
+  my.proc.onaudioprocess = e => {
+    if(cap !== my) return;
+    const d = new Float32Array(e.inputBuffer.getChannelData(0));
+    let sum = 0; for(let i = 0; i < d.length; i++) sum += d[i] * d[i];
+    const rms = Math.sqrt(sum / d.length);
+    const t = performance.now() - my.started;
+    if(t < 200) return;                                       // skip the start beep
+    if(t < 500){ my.noise.push(rms); my.pre.push(d); return; } // learn the background noise (car, street)
+    if(my.noise.length){
+      const avg = my.noise.reduce((a, b) => a + b, 0) / my.noise.length;
+      my.threshold = Math.max(0.012, avg * 3); my.noise = [];
+    }
+    updateMeter(rms / my.threshold);
+    if(!my.speech){
+      my.pre.push(d); if(my.pre.length > 5) my.pre.shift();   // keep a little sound from just before the first word
+      my.voiceRun = rms > my.threshold ? my.voiceRun + 1 : 0;
+      if(my.voiceRun >= 2){
+        my.speech = true; my.chunks = my.pre.slice(); my.pre = []; my.lastVoice = t;
+        setLiveText('듣고 있어요… 다 말하면 알아서 보내요');
+      } else if(t > 7000) finishCapture(my, 'silence');
+      return;
+    }
+    my.chunks.push(d);
+    if(rms > my.threshold * 0.8) my.lastVoice = t;
+    if(t - my.lastVoice > 1300 || t > 25000) finishCapture(my, 'done');   // a 1.3 s pause ends the turn
+  };
+}
+function finishCapture(my, why){
+  if(cap !== my) return;
+  cap = null; releaseCapture(my); hideLive(); setState('idle');
+  if(why === 'silence' || !my.speech || !my.chunks.length){
+    const tries = my.opts.tries || 0;
+    if(my.opts.auto && tries < 2 && !document.hidden && !$('#settings').open){
+      setTimeout(() => { if(state === 'idle' && !cap) startCapture({auto:true, retry:true, tries:tries + 1}); }, 150);
+      return;
+    }
+    toast(my.opts.auto ? '조용해서 듣기를 멈췄어요. 말하려면 버튼을 눌러 주세요.' : '잘 못 들었어요. 버튼을 누르고 다시 말해 주세요.');
+    return;
+  }
+  beep(620, 0.07);
+  sendVoice(encodeWav(my.chunks, my.rate));
+}
+// 16 kHz mono WAV keeps the upload small (about 32 KB a second)
+function encodeWav(chunks, rate){
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(total);
+  let o = 0; for(const c of chunks){ all.set(c, o); o += c.length; }
+  const ratio = rate / 16000, outLen = Math.floor(total / ratio);
+  const pcm = new Int16Array(outLen);
+  for(let i = 0; i < outLen; i++){
+    const a = Math.floor(i * ratio), b = Math.min(total, Math.floor((i + 1) * ratio));
+    let s = 0; for(let j = a; j < b; j++) s += all[j];
+    const v = Math.max(-1, Math.min(1, s / Math.max(1, b - a)));
+    pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+  }
+  return {blob:pcmToWav(new Uint8Array(pcm.buffer), 16000), seconds:outLen / 16000};
+}
+async function sendVoice(w){
+  let b64;
+  try{
+    b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(w.blob); });
+  }catch(e){ toast('녹음한 소리를 준비하지 못했어요. 다시 말해 주세요.'); return; }
+  const t = Date.now();
+  pendingAudio.set(t, b64);
+  chat.push({role:'user', lang:'voice', text:'', secs:Math.round(w.seconds * 10) / 10, t});
+  saveChat(); renderAll(); requestTutor();
+}
+
 /* ================= Gemini ================= */
 const SCHEMA = {
   type:'OBJECT',
@@ -989,10 +1134,12 @@ const SCHEMA = {
       properties:{ lang:{type:'STRING', enum:['en','ko']}, text:{type:'STRING'}, ko:{type:'STRING'} },
       required:['lang','text','ko'], propertyOrdering:['lang','text','ko'] } },
     say_this:{type:'STRING'}, say_this_ko:{type:'STRING'}, say_this_sound:{type:'STRING'},
-    review:{ type:'ARRAY', items:{ type:'OBJECT', properties:{ en:{type:'STRING'}, ko:{type:'STRING'} }, required:['en','ko'] } }
+    review:{ type:'ARRAY', items:{ type:'OBJECT', properties:{ en:{type:'STRING'}, ko:{type:'STRING'} }, required:['en','ko'] } },
+    heard:{type:'STRING'},
+    speed:{type:'STRING', enum:['', 'slower', 'faster']}
   },
-  required:['parts','say_this','say_this_ko','say_this_sound','review'],
-  propertyOrdering:['parts','say_this','say_this_ko','say_this_sound','review']
+  required:['heard','parts','say_this','say_this_ko','say_this_sound','review','speed'],
+  propertyOrdering:['heard','parts','say_this','say_this_ko','say_this_sound','review','speed']
 };
 let schemaOK = true;
 
@@ -1042,16 +1189,25 @@ nick
   }
   if(S.carMode) L.push('', '[지금 상황] 학생은 출퇴근길 차 안이라 화면을 거의 못 봐. 소리만 듣고도 따라올 수 있게 영어는 더 짧게, 한국어 설명도 더 짧게 해. "화면을 보세요" 같은 말은 하지 마.');
   L.push('',
+'[음성 메시지] 학생 말에 소리 파일이 붙어 오면 소리를 직접 들어. 한국어와 영어가 섞여 있어도 그대로 이해해.',
+'- 영어 문장 속에 모르는 단어를 한국어로 넣었으면(예: "I want go to 박물관"): 그 단어의 영어를 짧게 알려 주고("박물관은 museum이에요"), 고친 전체 문장을 say_this에 넣어 따라 하게 해.',
+'- 소리가 안 들리거나 알아들을 수 없으면 heard는 ""로 두고, 한국어로 "잘 안 들렸어요. 한 번만 다시 말해 줄래요?"처럼 말해.',
+'- 발음이 많이 달라서 알아듣기 힘든 단어가 있을 때만 한글 소리로 짧게 알려 줘. 그 밖의 발음 지적은 하지 마.',
+'',
 '[답 형식] JSON 하나로만 답해.',
+'- heard: 학생이 소리로 말했으면 들은 그대로 적어(한국어·영어 섞인 그대로, 틀린 문법도 고치지 말고). 소리가 없으면 "".',
+'- speed: 학생이 더 천천히 말해 달라고 하면 "slower", 더 빨리 말해 달라고 하면 "faster", 아니면 "". 이때 방금 한 영어를 다시 말해 줘.',
 '- parts: 네가 말할 내용을 말하는 순서대로 나눈 목록. 각 항목은 {"lang":"en" 또는 "ko", "text":문장, "ko":lang이 en이면 그 영어의 한국어 뜻, ko면 ""}. 한 항목 안에 한국어 문장과 영어 문장을 섞지 마. 한국어 설명 속 영어 단어는 작은따옴표로 짧게만.',
 '- say_this: 학생이 따라 말하거나 대신 쓸 영어 문장 하나(없으면 ""). 있으면 parts 안에도 그 문장을 en 항목으로 넣어서 소리로 들려줘.',
 '- say_this_ko: say_this의 한국어 뜻. say_this_sound: say_this를 한글로 적은 소리(예: "아이 워즈 쏘 타이어드").',
 '- review: [마무리] 때만 [{"en":..., "ko":...}] 최대 3개, 평소엔 [].',
 '',
 '예시 1) 학생: [한국어 음성] 오늘 너무 피곤했어',
-'{"parts":[{"lang":"ko","text":"아이고, 피곤했군요. 그건 이렇게 말하면 돼요.","ko":""},{"lang":"en","text":"I was so tired today.","ko":"오늘 너무 피곤했어요."},{"lang":"ko","text":"따라 해 볼까요?","ko":""}],"say_this":"I was so tired today.","say_this_ko":"오늘 너무 피곤했어요.","say_this_sound":"아이 워즈 쏘 타이어드 투데이","review":[]}',
+'{"heard":"","parts":[{"lang":"ko","text":"아이고, 피곤했군요. 그건 이렇게 말하면 돼요.","ko":""},{"lang":"en","text":"I was so tired today.","ko":"오늘 너무 피곤했어요."},{"lang":"ko","text":"따라 해 볼까요?","ko":""}],"say_this":"I was so tired today.","say_this_ko":"오늘 너무 피곤했어요.","say_this_sound":"아이 워즈 쏘 타이어드 투데이","review":[],"speed":""}',
+'예시 3) 학생: [음성 메시지] (소리: "I want go to 박물관")',
+'{"heard":"I want go to 박물관","parts":[{"lang":"ko","text":"좋아요, 거의 다 했어요! 박물관은 영어로 museum이에요.","ko":""},{"lang":"en","text":"I want to go to the museum.","ko":"박물관에 가고 싶어요."},{"lang":"ko","text":"따라 해 볼까요?","ko":""}],"say_this":"I want to go to the museum.","say_this_ko":"박물관에 가고 싶어요.","say_this_sound":"아이 원 투 고 투 더 뮤지엄","review":[],"speed":""}',
 '예시 2) 직전에 네가 "What did you eat for lunch?"라고 했고, 학생: [못 알아들음]',
-'{"parts":[{"lang":"ko","text":"괜찮아요. 방금은 점심에 뭐 먹었냐는 뜻이었어요.","ko":""},{"lang":"ko","text":"\'lunch\'가 점심, \'eat\'이 먹다예요.","ko":""},{"lang":"en","text":"What did you eat for lunch?","ko":"점심에 뭐 먹었어요?"},{"lang":"ko","text":"예를 들면 이렇게 대답하면 돼요.","ko":""},{"lang":"en","text":"I ate kimchi stew.","ko":"김치찌개 먹었어요."}],"say_this":"I ate kimchi stew.","say_this_ko":"김치찌개 먹었어요.","say_this_sound":"아이 에잇 김치 스튜","review":[]}',
+'{"heard":"","parts":[{"lang":"ko","text":"괜찮아요. 방금은 점심에 뭐 먹었냐는 뜻이었어요.","ko":""},{"lang":"ko","text":"\'lunch\'가 점심, \'eat\'이 먹다예요.","ko":""},{"lang":"en","text":"What did you eat for lunch?","ko":"점심에 뭐 먹었어요?"},{"lang":"ko","text":"예를 들면 이렇게 대답하면 돼요.","ko":""},{"lang":"en","text":"I ate kimchi stew.","ko":"김치찌개 먹었어요."}],"say_this":"I ate kimchi stew.","say_this_ko":"김치찌개 먹었어요.","say_this_sound":"아이 에잇 김치 스튜","review":[],"speed":""}',
 '(한국어 말투는 위에 정한 말투를 따라.)');
   return L.join('\n');
 }
@@ -1066,6 +1222,7 @@ function userWire(m){
   if(m.signal === 'write') return SIGNAL_WIRE.write + m.text;
   if(m.signal === 'huh') return SIGNAL_WIRE.huh + (m.text && m.text !== '못 알아들었어요' ? ` (학생이 한 말: ${m.text})` : '');
   if(m.signal) return SIGNAL_WIRE[m.signal];
+  if(m.lang === 'voice') return pendingAudio.has(m.t) ? '[음성 메시지] 붙어 있는 소리가 학생이 한 말이야.' : `[음성] ${m.text}`;
   const tag = m.lang === 'ko' ? '[한국어 음성]' : m.lang === 'en' ? '[영어 음성]' : '[타이핑]';
   return `${tag} ${m.text}`;
 }
@@ -1075,9 +1232,11 @@ function buildContents(){
   const out = [];
   for(const m of msgs){
     const role = m.role === 'user' ? 'user' : 'model';
-    const text = m.role === 'user' ? userWire(m) : (m.raw || JSON.stringify(m.data));
+    const parts = [{text:m.role === 'user' ? userWire(m) : (m.raw || JSON.stringify(m.data))}];
+    // only an unanswered voice message carries its sound; answered ones travel as the words Gemini heard
+    if(m.role === 'user' && m.lang === 'voice' && pendingAudio.has(m.t)) parts.push({inlineData:{mimeType:'audio/wav', data:pendingAudio.get(m.t)}});
     const last = out[out.length - 1];
-    if(last && last.role === role) last.parts.push({text}); else out.push({role, parts:[{text}]});
+    if(last && last.role === role) last.parts.push(...parts); else out.push({role, parts});
   }
   return out;
 }
@@ -1162,7 +1321,9 @@ function parseTutor(raw){
   return {
     parts: parts.length ? parts : [{lang:'ko', text:'음, 한 번만 다시 말해 줄래요?', ko:''}],
     say_this: str(o.say_this), say_this_ko: str(o.say_this_ko), say_this_sound: str(o.say_this_sound),
-    review: (Array.isArray(o.review) ? o.review : []).filter(r => r && str(r.en)).slice(0, 3).map(r => ({en:str(r.en), ko:str(r.ko)}))
+    review: (Array.isArray(o.review) ? o.review : []).filter(r => r && str(r.en)).slice(0, 3).map(r => ({en:str(r.en), ko:str(r.ko)})),
+    heard: str(o.heard),
+    speed: o.speed === 'slower' || o.speed === 'faster' ? o.speed : ''
   };
 }
 
@@ -1189,6 +1350,12 @@ async function requestTutor(){
   try{
     const {raw, data} = await askTutor(ctrl.signal);
     if(inflight !== ctrl) return;
+    // the voice message now shows the words Gemini heard, and its sound is let go
+    for(const m of chat) if(m.role === 'user' && m.lang === 'voice' && pendingAudio.has(m.t)){
+      m.text = data.heard || '(소리를 잘 알아듣지 못했어요)'; pendingAudio.delete(m.t);
+    }
+    if(data.speed === 'slower') changeRate(-0.1);
+    else if(data.speed === 'faster') changeRate(+0.1);
     chat.push({role:'tutor', data, raw, t:Date.now()});
     saveChat();
     const i = chat.length - 1;
@@ -1198,7 +1365,14 @@ async function requestTutor(){
   }catch(e){
     if(e.name === 'AbortError' || inflight !== ctrl) return;
     showThinking(false);
-    const msg = e.userText || '연결에 실패했어요. 인터넷 연결을 확인해 주세요.';
+    let msg = e.userText || '연결에 실패했어요. 인터넷 연결을 확인해 주세요.';
+    // this model can't take sound: drop the voice message and switch to the phone's speech recognition
+    const voice = chat.filter(m => m.role === 'user' && m.lang === 'voice' && pendingAudio.has(m.t));
+    if(voice.length && e.status === 400 && /audio|inline|mime|modalit/i.test(e.message || '')){
+      voice.forEach(m => { pendingAudio.delete(m.t); chat.splice(chat.indexOf(m), 1); });
+      listenFallback = true; syncOutputs();
+      msg = `이 모델(${modelId()})은 소리를 직접 못 들어서 휴대폰 음성 인식으로 바꿨어요. 한국어로/영어로 버튼으로 다시 말해 주세요.`;
+    }
     chat.push({role:'error', text:msg}); saveChat(); setState('idle'); renderAll();
     if(S.carMode) sayKo('연결에 문제가 생겼어요. 잠시 뒤에 다시 말해 주세요.', {noAuto:true});
   }finally{
@@ -1255,7 +1429,7 @@ function sayNode(d, live){
     S.showMeaning && d.say_this_ko ? el('div', {class:'sk', text:d.say_this_ko}) : null,
     live ? el('div', {class:'row'},
       iconBtn('play', '듣기', () => speakItems([{lang:'en', text:d.say_this}], {noAuto:true})),
-      iconBtn('mic', '따라 말하기', () => startListening('en'), 'pill primary')) : null
+      iconBtn('mic', '따라 말하기', () => { unlockAudio(); useGeminiListen() ? startCapture() : startListening('en'); }, 'pill primary')) : null
   );
 }
 function renderTutor(m, i){
@@ -1293,6 +1467,11 @@ function renderUser(m){
   if(m.signal === 'huh' || m.signal === 'wrap'){
     return el('div', {class:'msg user chip'}, m.signal === 'huh' ? el('span', {html:ICON.huh, style:'display:contents'}) : null, m.text || SIGNAL_LABEL[m.signal]);
   }
+  if(m.lang === 'voice'){
+    const waiting = pendingAudio.has(m.t);
+    return el('div', {class:'msg user'}, el('span', {class:'tag', text:waiting ? `음성 ${m.secs || ''}초` : '말함 (선생님이 들은 말)'}),
+      m.text || (waiting ? '선생님이 듣는 중…' : `음성 ${m.secs || ''}초`));
+  }
   const tag = m.signal === 'write' ? '쓰기' : m.lang === 'ko' ? '한국어로 말함' : m.lang === 'en' ? '영어로 말함' : '입력';
   return el('div', {class:'msg user'}, el('span', {class:'tag', text:tag}), m.text);
 }
@@ -1323,7 +1502,9 @@ function welcomeNode(){
       el('img', {src:'img/daon-portrait.jpg', alt:`${n} 쌤`, width:76, height:76}),
       el('h1', {text:`안녕하세요, ${n} 쌤이에요. 영어 잘하는 한국인 과외 선생님처럼 옆에서 같이 말해 볼게요.`})),
     el('ul', {class:'how'},
-      el('li', null, el('b', {text:'버튼 안 눌러도 돼요. '}), '제 말이 끝나면 ‘띵’ 소리와 함께 바로 들어요. 다른 언어로 말하려면 그 언어 버튼만 누르세요.'),
+      el('li', null, el('b', {text:'버튼 안 눌러도 돼요. '}), useGeminiListen()
+        ? '제 말이 끝나면 ‘띵’ 소리와 함께 바로 들어요. “I want go to 박물관”처럼 한국어·영어를 섞어 말해도 알아들어요.'
+        : '제 말이 끝나면 ‘띵’ 소리와 함께 바로 들어요. 다른 언어로 말하려면 그 언어 버튼만 누르세요.'),
       el('li', null, el('b', {text:'한국어로 말해도 돼요. '}), '하고 싶었던 말을 영어로 바꿔서 알려 줄게요.'),
       el('li', null, el('b', {text:'못 알아들으면 '}), '‘못 알아들었어요’를 누르거나 “뭐라고요?”라고 하세요. 한국어로 풀어서 설명해 줄게요.'),
       el('li', null, el('b', {text:'속도와 글자 크기는 '}), '위쪽 − / + 로 바로 바꿔요. 말로 “천천히”, “다시”라고 해도 돼요.'),
@@ -1381,15 +1562,20 @@ function showThinking(on){
 function showLive(text, lang){
   let n = feed.querySelector('.msg.user.live');
   if(!n){
-    n = el('div', {class:'msg user live latest'}, el('span', {class:'tag'}), el('span', {class:'lt'}));
+    n = el('div', {class:'msg user live latest'}, el('span', {class:'tag'}), el('span', {class:'lt'}),
+      lang === 'any' ? el('span', {class:'meter', 'aria-hidden':'true'}, el('i')) : null);
     feed.append(n);
   }
-  n.querySelector('.tag').textContent = lang === 'ko' ? '한국어 듣는 중…' : '영어 듣는 중…';
-  n.querySelector('.lt').textContent = text || (lang === 'ko'
-    ? '말해 보세요 · 영어로 하려면 아래 ‘영어로’'
-    : 'Say it in English · 한국어로 하려면 아래 ‘한국어로’');
+  n.querySelector('.tag').textContent = lang === 'any' ? '듣는 중…' : lang === 'ko' ? '한국어 듣는 중…' : '영어 듣는 중…';
+  n.querySelector('.lt').textContent = text || (lang === 'any'
+    ? '말해 보세요 · 한국어·영어 섞어도 돼요'
+    : lang === 'ko'
+      ? '말해 보세요 · 영어로 하려면 아래 ‘영어로’'
+      : 'Say it in English · 한국어로 하려면 아래 ‘한국어로’');
   scrollFeed();
 }
+function setLiveText(text){ const n = feed.querySelector('.msg.user.live .lt'); if(n) n.textContent = text; }
+function updateMeter(x){ const i = feed.querySelector('.msg.user.live .meter i'); if(i) i.style.width = Math.min(100, Math.round(x * 45)) + '%'; }
 function hideLive(){ const n = feed.querySelector('.msg.user.live'); if(n) n.remove(); }
 
 /* ================= controls: speed · text size · car mode ================= */
@@ -1409,6 +1595,7 @@ function applyTheme(){
 function syncOutputs(){
   $('#rateOut').textContent = S.enRate.toFixed(2) + '×';
   document.body.classList.toggle('gem-voice', S.voiceEngine === 'gemini');
+  document.body.classList.toggle('gem-listen', useGeminiListen());
   $('#rateLbl').textContent = S.voiceEngine === 'gemini' ? '말 속도' : '영어 속도';
   $('#enRateLbl').textContent = S.voiceEngine === 'gemini' ? '말 속도 (한국어·영어 같이)' : '영어 속도';
   $('#fontOut').textContent = Math.round((S.carMode ? S.carScale : S.scale) * 100) + '%';
@@ -1516,6 +1703,7 @@ $$('[data-key]').forEach(f => {
     if(k === 'persona') choosePersona(v);
     if(k === 'scale' || k === 'carScale') applyScale();
     if(['voiceEngine', 'gVoice', 'ttsModel', 'apiKey'].includes(k)){ ttsOffUntil = 0; $('#voiceOut').textContent = ''; }
+    if(k === 'listenEngine' || k === 'model') listenFallback = false;
     syncOutputs();
   });
 });
@@ -1560,7 +1748,7 @@ function updateModelHint(kind){
   $(p.hint).textContent = info ? info.hint : (cur ? `${cur} · 비용은 Google 가격표에서 확인해 주세요.` : '모델 이름을 적어 주세요.');
 }
 function onModelChanged(kind){
-  if(kind === 'chat') schemaOK = true;          // a new model gets a fresh try with the JSON schema
+  if(kind === 'chat'){ schemaOK = true; listenFallback = false; syncOutputs(); }   // a new model gets a fresh try
   else { ttsOffUntil = 0; $('#voiceOut').textContent = ''; }
   updateModelHint(kind);
 }
@@ -1650,14 +1838,20 @@ function unlockAudio(){
   try{ if(synth){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); }catch(e){}
   try{ player.src = SILENT_WAV; const p = player.play(); if(p) p.then(() => player.pause()).catch(() => {}); }catch(e){}
+  try{ micCtx = micCtx || new (window.AudioContext || window.webkitAudioContext)(); micCtx.resume(); }catch(e){}   // iPhone only starts audio from a tap
 }
 document.addEventListener('pointerdown', unlockAudio, {once:true});
 
 function micPress(lang){
   unlockAudio();
+  if(lang === 'any'){
+    if(cap){ cap.speech ? finishCapture(cap, 'done') : stopCapture(); return; }   // tap while listening: send now
+    startCapture(); return;
+  }
   if(state === 'listening' && listenLang === lang){ stopListening(); return; }
   startListening(lang);
 }
+$('#micAny').addEventListener('click', () => micPress('any'));
 $('#micKo').addEventListener('click', () => micPress('ko'));
 $('#micEn').addEventListener('click', () => micPress('en'));
 $('#qReplay').addEventListener('click', () => replayLast(false));
@@ -1697,7 +1891,7 @@ $('#typebar').addEventListener('submit', e => {
 
 document.addEventListener('visibilitychange', () => {
   updateWake();
-  if(document.hidden){ abortListening(); store.set('daon.usage', usage); }
+  if(document.hidden){ abortListening(); store.set('daon.usage', usage); }   // also closes the microphone
 });
 window.addEventListener('pagehide', () => store.set('daon.usage', usage));
 if(synth){
