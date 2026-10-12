@@ -1,7 +1,7 @@
 // 다온쌤 영어과외 — service worker
 // Keeps the app shell on the phone so it opens instantly (and without signal in a tunnel).
 // Gemini API calls always go to the network.
-const CACHE = 'daon-v2';
+const CACHE = 'daon-v3';
 const SHELL = [
   './',
   './index.html',
@@ -9,7 +9,9 @@ const SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  './icons/favicon-64.png'
+  './icons/favicon-64.png',
+  './img/daon-avatar.jpg',
+  './img/daon-portrait.jpg'
 ];
 
 self.addEventListener('install', e => {
