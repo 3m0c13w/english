@@ -1,7 +1,7 @@
 // 다온쌤 영어과외 — service worker
 // Keeps the app shell on the phone so it opens instantly (and without signal in a tunnel).
 // Gemini API calls always go to the network.
-const CACHE = 'daon-v1';
+const CACHE = 'daon-v2';
 const SHELL = [
   './',
   './index.html',
