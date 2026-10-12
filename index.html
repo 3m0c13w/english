@@ -398,16 +398,18 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
           </div>
         </label>
         <p class="hint">Google AI Studio(aistudio.google.com)에서 만들 수 있어요. 키는 이 기기 브라우저에만 저장되고, 구글 서버 말고는 어디에도 보내지 않아요.</p>
-        <label class="field"><span>모델</span>
-          <input type="text" id="f-model" data-key="model" list="modelList" spellcheck="false" autocomplete="off">
-          <datalist id="modelList">
-            <option value="gemini-3.1-flash-lite">가장 저렴 (추천)</option>
-            <option value="gemini-3.5-flash-lite">조금 더 똑똑함, 조금 더 비쌈</option>
-            <option value="gemini-2.5-flash-lite">예전 모델 (기존 사용자만)</option>
-          </datalist>
+        <label class="field"><span>대화 모델</span>
+          <select id="f-modelSel" data-models="chat"></select>
         </label>
-        <p class="hint">3.1 Flash-Lite 기준 30분에 대략 50~100원. 무료 등급 키는 0원이지만 하루 사용량 제한이 있고, 대화가 구글 서비스 개선에 쓰일 수 있어요.</p>
-        <div class="row"><button class="pill" type="button" id="btnTest">연결 확인</button></div>
+        <label class="field" id="modelCustomWrap" hidden><span>모델 이름 직접 입력</span>
+          <input type="text" id="f-model" data-key="model" placeholder="예: gemini-3.8-flash" spellcheck="false" autocomplete="off">
+        </label>
+        <p class="hint" id="modelHint"></p>
+        <p class="hint">무료 등급 키는 0원이지만 하루 사용량 제한이 있고, 대화가 구글 서비스 개선에 쓰일 수 있어요.</p>
+        <div class="row">
+          <button class="pill" type="button" id="btnTest">연결 확인</button>
+          <button class="pill" type="button" id="btnLoadModels">내 키로 쓸 수 있는 모델 불러오기</button>
+        </div>
         <p class="hint" id="testOut" aria-live="polite"></p>
       </section>
 
@@ -420,7 +422,6 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
           </select>
         </label>
         <div class="gem-only stack">
-          <div class="two">
             <label class="field"><span>Gemini 목소리</span>
               <select id="f-gVoice" data-key="gVoice">
                 <option value="Sulafat">Sulafat · 따뜻함</option>
@@ -440,13 +441,12 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
               </select>
             </label>
             <label class="field"><span>음성 모델</span>
-              <input type="text" id="f-ttsModel" data-key="ttsModel" list="ttsList" spellcheck="false" autocomplete="off">
-              <datalist id="ttsList">
-                <option value="gemini-3.8-flash-lite-tts">저렴 (추천)</option>
-                <option value="gemini-3.8-flash-tts">조금 더 자연스러움</option>
-              </datalist>
+              <select id="f-ttsModelSel" data-models="tts"></select>
             </label>
-          </div>
+          <label class="field" id="ttsCustomWrap" hidden><span>음성 모델 이름 직접 입력</span>
+            <input type="text" id="f-ttsModel" data-key="ttsModel" placeholder="예: gemini-3.8-flash-tts" spellcheck="false" autocomplete="off">
+          </label>
+          <p class="hint" id="ttsModelHint"></p>
           <p class="hint">한 목소리가 한국어와 영어를 섞어서 말해요. 무료 등급 키는 0원(하루 한도 있음), 유료 키는 30분에 약 50~150원이 더 들어요. 다시 듣기와 천천히는 받아 둔 소리를 다시 틀어서 추가 비용이 없어요. Gemini 음성이 안 되면 자동으로 휴대폰 목소리로 읽어요.</p>
         </div>
         <label class="field"><span><span id="enRateLbl">영어 속도</span> <output id="o-enRate"></output></span>
@@ -494,8 +494,8 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:32px}
         <p class="hint">글씨가 커지고, 마지막 대화만 보이고, 버튼이 커져요. 운전 중에는 화면을 보지 말고 소리로만 하세요.</p>
         <label class="field"><span>선생님 말이 끝나면 자동으로 듣기</span>
           <select id="f-autoListen" data-key="autoListen">
+            <option value="always">항상 (추천)</option>
             <option value="car">출퇴근 모드에서만</option>
-            <option value="always">항상</option>
             <option value="off">끄기 (버튼을 눌러서 말하기)</option>
           </select>
         </label>
@@ -570,7 +570,7 @@ const DEFAULTS = {
   tutorName:'다온', personality:'차분하고 다정함', tone:'polite', repeat:'보통',
   enRate:0.88, koRate:1.0, gap:0.4, enVoice:'', koVoice:'',
   scale:1.1, carScale:1.7, showMeaning:true, showSound:true, soundFirst:false, theme:'auto',
-  autoListen:'car', beep:true, wakeLock:true, carMode:false, lastLang:'ko',
+  autoListen:'always', beep:true, wakeLock:true, carMode:false, lastLang:'ko',
   voiceEngine:'gemini', gVoice:'Sulafat', ttsModel:'gemini-3.8-flash-lite-tts',
   persona:'calm', nickname:''
 };
@@ -601,6 +601,12 @@ let S = Object.assign({}, DEFAULTS, storedS);
 // before presets existed, a personality typed by hand means "직접 입력"
 if(!('persona' in storedS) && storedS.personality && storedS.personality !== DEFAULTS.personality) S.persona = 'custom';
 if(!PERSONAS[S.persona]) S.persona = 'calm';
+// v2: listening starts by itself after the teacher speaks, everywhere (it used to be commute mode only)
+if((storedS.v || 0) < 2){
+  if(S.autoListen === 'car') S.autoListen = 'always';
+  S.v = 2;
+  store.set('daon.settings', S);
+}
 let chat = store.get('daon.chat', []);
 if(!Array.isArray(chat)) chat = [];
 const saveS = () => store.set('daon.settings', S);
@@ -896,7 +902,8 @@ function beep(freq = 880, dur = 0.09){
   }catch(e){}
 }
 
-function startListening(lang){
+/* opts.auto: started by itself after the teacher spoke; a silent pause gets two more tries before it gives up */
+function startListening(lang, opts = {}){
   if(!SR){
     toast(isIOS && isStandalone()
       ? '아이폰 홈 화면 앱에서는 음성 인식이 막힐 때가 있어요. 사파리에서 같은 주소로 열어 주세요.'
@@ -911,7 +918,7 @@ function startListening(lang){
   r.lang = lang === 'ko' ? 'ko-KR' : 'en-US';
   r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
   let finalText = '', interim = '', err = '';
-  r.onstart = () => { if(rec !== r) return; setState('listening', lang); showLive('', lang); beep(880); };
+  r.onstart = () => { if(rec !== r) return; setState('listening', lang); showLive('', lang); if(!opts.retry) beep(880); };
   r.onresult = e => {
     interim = '';
     for(let j = e.resultIndex; j < e.results.length; j++){
@@ -926,9 +933,15 @@ function startListening(lang){
     rec = null; hideLive(); setState('idle');
     const text = (finalText || interim).trim();
     if(text){ beep(620, 0.07); S.lastLang = lang; saveS(); handleSpoken(text, lang); return; }
+    const tries = opts.tries || 0;
+    if(opts.auto && (err === 'no-speech' || !err) && tries < 2 && !document.hidden && !$('#settings').open){
+      setTimeout(() => { if(state === 'idle' && !rec) startListening(lang, {auto:true, retry:true, tries:tries + 1}); }, 150);
+      return;
+    }
     if(err === 'not-allowed' || err === 'service-not-allowed') toast('마이크가 막혀 있어요. 주소창 왼쪽 자물쇠에서 마이크를 허용해 주세요.');
     else if(err === 'network') toast('음성 인식은 인터넷 연결이 필요해요.');
     else if(err === 'aborted') {}
+    else if(opts.auto) toast('조용해서 듣기를 멈췄어요. 말하려면 버튼을 눌러 주세요.');
     else toast('잘 못 들었어요. 버튼을 누르고 다시 말해 주세요.');
   };
   try{ r.start(); }catch(e){ rec = null; setState('idle'); toast('마이크를 켜지 못했어요. 다시 눌러 주세요.'); }
@@ -946,7 +959,7 @@ function maybeAutoListen(){
   if(!SR || !S.apiKey || document.hidden || $('#settings').open) return;
   const last = lastTutor();
   const lang = last && last.m.data.say_this ? 'en' : (S.lastLang || 'ko');
-  setTimeout(() => { if(state === 'idle' && !rec) startListening(lang); }, 350);
+  setTimeout(() => { if(state === 'idle' && !rec) startListening(lang, {auto:true}); }, 350);
 }
 
 /* short spoken commands handled on the device — no API call */
@@ -1016,7 +1029,7 @@ nick
 '9. 학생이 영어로 대답하는 횟수가 늘면 한국어를 조금씩 줄여.',
 '10. 칭찬은 짧게. 점수 매기지 마. 발음기호는 쓰지 마(학생이 잘 몰라). 발음은 필요할 때만 한글 소리로(say_this_sound).',
 '11. 이야깃거리가 떨어질 때만 학생이 좋아하는 것을 꺼내.',
-'12. 학생 말은 음성 인식 결과라 글자가 틀릴 수 있어. 뜻을 짐작해서 이해하고, 받아쓰기 오류는 지적하지 마. [영어 음성]인데 앞뒤가 안 맞는 영어 단어들이면, 학생이 한국어로 말한 걸 영어로 잘못 받아 적은 거야. 그럴 땐 "한국어로 말할 땐 한국어 버튼을 눌러 주세요"라고 짧게 알려 줘.',
+'12. 학생 말은 음성 인식 결과라 글자가 틀릴 수 있어. 뜻을 짐작해서 이해하고, 받아쓰기 오류는 지적하지 마. [영어 음성]인데 앞뒤가 안 맞는 영어 단어들이면, 학생이 한국어로 말한 걸 영어로 잘못 받아 적은 거야. 그럴 땐 "한국어로 말할 땐 한국어 버튼을 눌러 주세요"라고 짧게 알려 줘. 반대로 [한국어 음성]인데 영어 발음을 한글로 받아 적은 것 같으면(예: "아이 워즈 타이어드") 학생이 영어로 말한 거야. 영어 문장으로 알아듣고 영어로 말한 걸 칭찬해 줘.',
 '13. [시작] 신호: 한국어로 짧게 인사하고(부르는 이름이 있으면 이름을 불러서), 오늘 하루가 어땠는지 쉬운 영어로 하나만 물어봐.',
 '14. [마무리] 신호: 오늘 같이 쓴 문장 중 쓸모 있는 것 최대 3개를 review에 담고, 수고했다고 말하고, 그중 하나를 직접 써 보라고 해.',
 '15. [쓰기] 신호: 학생이 쓴 문장을 부드럽게 고쳐 줘. 고친 문장은 say_this에, 바뀐 점은 한국어 한 문장으로. 맞았으면 칭찬만.',
@@ -1310,10 +1323,11 @@ function welcomeNode(){
       el('img', {src:'img/daon-portrait.jpg', alt:`${n} 쌤`, width:76, height:76}),
       el('h1', {text:`안녕하세요, ${n} 쌤이에요. 영어 잘하는 한국인 과외 선생님처럼 옆에서 같이 말해 볼게요.`})),
     el('ul', {class:'how'},
+      el('li', null, el('b', {text:'버튼 안 눌러도 돼요. '}), '제 말이 끝나면 ‘띵’ 소리와 함께 바로 들어요. 다른 언어로 말하려면 그 언어 버튼만 누르세요.'),
       el('li', null, el('b', {text:'한국어로 말해도 돼요. '}), '하고 싶었던 말을 영어로 바꿔서 알려 줄게요.'),
       el('li', null, el('b', {text:'못 알아들으면 '}), '‘못 알아들었어요’를 누르거나 “뭐라고요?”라고 하세요. 한국어로 풀어서 설명해 줄게요.'),
       el('li', null, el('b', {text:'속도와 글자 크기는 '}), '위쪽 − / + 로 바로 바꿔요. 말로 “천천히”, “다시”라고 해도 돼요.'),
-      el('li', null, el('b', {text:'출퇴근 모드는 '}), '글씨와 버튼을 크게 하고, 제 말이 끝나면 알아서 들어요. 운전 중엔 화면 말고 소리로만 하세요.')),
+      el('li', null, el('b', {text:'출퇴근 모드는 '}), '글씨와 버튼을 크게 하고 화면이 꺼지지 않게 해요. 운전 중엔 화면 말고 소리로만 하세요.')),
     ex,
     el('div', {class:'persona-pick'},
       el('div', {class:'lbl', text:'오늘 선생님 성격'}),
@@ -1371,7 +1385,9 @@ function showLive(text, lang){
     feed.append(n);
   }
   n.querySelector('.tag').textContent = lang === 'ko' ? '한국어 듣는 중…' : '영어 듣는 중…';
-  n.querySelector('.lt').textContent = text || (lang === 'ko' ? '말해 보세요' : 'Say it in English');
+  n.querySelector('.lt').textContent = text || (lang === 'ko'
+    ? '말해 보세요 · 영어로 하려면 아래 ‘영어로’'
+    : 'Say it in English · 한국어로 하려면 아래 ‘한국어로’');
   scrollFeed();
 }
 function hideLive(){ const n = feed.querySelector('.msg.user.live'); if(n) n.remove(); }
@@ -1462,6 +1478,7 @@ function syncForm(){
     else if(f.tagName !== 'SELECT' || f.querySelector(`option[value="${CSS.escape(String(S[k]))}"]`)) f.value = S[k] == null ? '' : S[k];
   });
   fillVoices(); syncOutputs(); updatePersonaUI();
+  fillModelPicker('chat'); fillModelPicker('tts');
 }
 function updatePersonaUI(){
   const P = PERSONAS[S.persona] || PERSONAS.calm;
@@ -1502,6 +1519,90 @@ $$('[data-key]').forEach(f => {
     syncOutputs();
   });
 });
+/* ================= model pickers ================= */
+const MODEL_INFO = {
+  chat:[
+    {id:'gemini-3.1-flash-lite', label:'3.1 Flash-Lite · 가장 저렴 (추천)', hint:'30분에 약 50~100원. 빠르고 싸요.'},
+    {id:'gemini-3.5-flash-lite', label:'3.5 Flash-Lite · 조금 더 똑똑함', hint:'30분에 약 70~130원.'},
+    {id:'gemini-3.8-flash', label:'3.8 Flash · 훨씬 똑똑함', hint:'30분에 약 200~350원 (2027년부터 두 배). 답이 조금 느릴 수 있어요.'},
+    {id:'gemini-3.6-flash', label:'3.6 Flash · 똑똑함', hint:'30분에 약 200~350원 (2027년부터 두 배). 답이 조금 느릴 수 있어요.'},
+    {id:'gemini-2.5-flash-lite', label:'2.5 Flash-Lite · 가장 쌈 (예전 사용자만)', hint:'30분에 약 20~40원. 예전에 이 모델을 써 본 계정만 쓸 수 있어요.'}
+  ],
+  tts:[
+    {id:'gemini-3.8-flash-lite-tts', label:'3.8 Flash-Lite TTS · 저렴 (추천)', hint:'유료 키면 30분에 약 50~150원이 더 들어요.'},
+    {id:'gemini-3.8-flash-tts', label:'3.8 Flash TTS · 조금 더 자연스러움', hint:'Flash-Lite TTS보다 1.5배쯤 비싸요.'}
+  ]
+};
+const CUSTOM_MODEL = '__custom';
+const PICKERS = {
+  chat:{sel:'#f-modelSel', wrap:'#modelCustomWrap', input:'#f-model', hint:'#modelHint', key:'model'},
+  tts:{sel:'#f-ttsModelSel', wrap:'#ttsCustomWrap', input:'#f-ttsModel', hint:'#ttsModelHint', key:'ttsModel'}
+};
+let loadedModels = store.get('daon.models', null);
+if(!loadedModels || typeof loadedModels !== 'object') loadedModels = {chat:[], tts:[]};
+
+function fillModelPicker(kind){
+  const p = PICKERS[kind], sel = $(p.sel), cur = String(S[p.key] || '').trim();
+  const known = MODEL_INFO[kind];
+  sel.textContent = '';
+  known.forEach(m => sel.append(el('option', {value:m.id, text:m.label})));
+  const extra = (loadedModels[kind] || []).filter(id => !known.some(m => m.id === id));
+  if(extra.length) sel.append(el('optgroup', {label:'내 키로 쓸 수 있는 다른 모델'}, extra.map(id => el('option', {value:id, text:id}))));
+  sel.append(el('option', {value:CUSTOM_MODEL, text:'직접 입력…'}));
+  const listed = !!cur && [...sel.options].some(o => o.value === cur);
+  sel.value = listed ? cur : CUSTOM_MODEL;
+  $(p.wrap).hidden = listed;
+  updateModelHint(kind);
+}
+function updateModelHint(kind){
+  const p = PICKERS[kind], cur = String(S[p.key] || '').trim();
+  const info = MODEL_INFO[kind].find(m => m.id === cur);
+  $(p.hint).textContent = info ? info.hint : (cur ? `${cur} · 비용은 Google 가격표에서 확인해 주세요.` : '모델 이름을 적어 주세요.');
+}
+function onModelChanged(kind){
+  if(kind === 'chat') schemaOK = true;          // a new model gets a fresh try with the JSON schema
+  else { ttsOffUntil = 0; $('#voiceOut').textContent = ''; }
+  updateModelHint(kind);
+}
+Object.entries(PICKERS).forEach(([kind, p]) => {
+  $(p.sel).addEventListener('change', e => {
+    const v = e.target.value;
+    if(v === CUSTOM_MODEL){ $(p.wrap).hidden = false; $(p.input).value = S[p.key] || ''; $(p.input).focus(); return; }
+    $(p.wrap).hidden = true;
+    S[p.key] = v; $(p.input).value = v; saveS(); onModelChanged(kind);
+  });
+  $(p.input).addEventListener('input', () => onModelChanged(kind));   // the data-key handler has already saved it
+});
+$('#btnLoadModels').addEventListener('click', async () => {
+  const out = $('#testOut');
+  if(!S.apiKey.trim()){ out.textContent = 'API 키를 먼저 넣어 주세요.'; out.className = 'hint bad'; return; }
+  out.textContent = '모델 목록을 불러오는 중…'; out.className = 'hint';
+  try{
+    const all = [];
+    let token = '';
+    for(let page = 0; page < 5; page++){
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''),
+        {headers:{'x-goog-api-key':S.apiKey.trim()}});
+      let j = null; try{ j = await res.json(); }catch(e){}
+      if(!res.ok){ const err = new Error((j && j.error && j.error.message) || ('HTTP ' + res.status)); err.status = res.status; throw err; }
+      (j && j.models || []).forEach(m => all.push(m));
+      token = j && j.nextPageToken; if(!token) break;
+    }
+    const ids = all
+      .filter(m => (m.supportedGenerationMethods || m.supported_generation_methods || []).includes('generateContent'))
+      .map(m => String(m.name || '').replace(/^models\//, ''))
+      .filter(id => /^gemini/i.test(id));
+    loadedModels = {
+      chat: ids.filter(id => !/tts|image|embedding|audio|live|robotics|computer-use/i.test(id)),
+      tts: ids.filter(id => /tts/i.test(id))
+    };
+    store.set('daon.models', loadedModels);
+    fillModelPicker('chat'); fillModelPicker('tts');
+    out.textContent = `불러왔어요. 대화 모델 ${loadedModels.chat.length}개, 음성 모델 ${loadedModels.tts.length}개 중에서 고를 수 있어요.`;
+    out.className = 'hint ok';
+  }catch(e){ out.textContent = apiErrorText(e.status, e.message, modelId()); out.className = 'hint bad'; }
+});
+
 const afterSettings = () => { setState(state === 'listening' ? 'idle' : state); renderAll(); };
 dlg.addEventListener('close', afterSettings);   // Esc / back gesture
 $('#btnCloseSettings').addEventListener('click', () => { dlg.close(); afterSettings(); });
